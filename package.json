@@ -1,0 +1,20 @@
+{
+  "name": "booking_service",
+  "version": "1.0.0",
+  "description": "It is a basic nodeJS template which can be used in all express project.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node --watch src/index.js"
+  },
+  "author": "Kishan Singh",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "http-status-codes": "^2.3.0",
+    "mysql2": "^3.15.3",
+    "sequelize": "^6.37.7",
+    "sequelize-cli": "^6.6.3",
+    "winston": "^3.18.3"
+  }
+}
