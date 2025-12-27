@@ -20,7 +20,7 @@ async function createBooking(data) {
       // Optimistic concurrency control.
       if (noOfSeats > flightData.totalSeats) {
         throw new AppError(
-          "Number of seats requested is more than the available seats",
+          "Number of seats you requested to book is more than the available seats",
           StatusCodes.BAD_REQUEST
         );
       }
