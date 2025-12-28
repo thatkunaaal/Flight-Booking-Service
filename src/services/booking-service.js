@@ -96,7 +96,7 @@ async function makePayment(data) {
     if (currTime - dt > 1000 * 60 * 5) {
       //greater than 5 minutes
 
-      await cancelBooking(bookingId);
+      await cancelBooking(bookingId, booking.flightId, booking.noOfSeats);
 
       throw new AppError(
         "Your booking has been expired",
@@ -109,7 +109,6 @@ async function makePayment(data) {
     await t.commit();
     return response;
   } catch (error) {
-    console.log(error);
     await t.rollback();
     if (error?.StatusCodes === StatusCodes.BAD_REQUEST) {
       throw new AppError(error.explanation, error.StatusCodes);
@@ -123,13 +122,45 @@ async function makePayment(data) {
   }
 }
 
-async function cancelBooking(bookingId) {
+async function cancelBooking(bookingId, flightId, noOfSeats) {
   const t = await sequelize.transaction();
   try {
-    const response = await bookingRepo.cancelBooking(bookingId, t);
+    await bookingRepo.cancelBooking(bookingId, t);
 
+    const response = await axios.patch(
+      `${ServerConfig.FLIGHT_SERVICE_URL}/api/v1/flights/${flightId}/seats`,
+      {
+        seats: noOfSeats,
+        dec: false,
+      }
+    );
     await t.commit();
     return response;
+  } catch (error) {
+    await t.rollback();
+    throw error;
+  }
+}
+
+async function cancelOldBooking() {
+  const t = await sequelize.transaction();
+  try {
+    const time = new Date(Date.now() - 1000 * 60 * 5);
+
+    const data = await bookingRepo.cancelOldBooking(time, t);
+
+    data.map(async (item) => {
+      const { flightId, noOfSeats } = item.dataValues;
+      await axios.patch(
+        `${ServerConfig.FLIGHT_SERVICE_URL}/api/v1/flights/${flightId}/seats`,
+        {
+          seats: noOfSeats,
+          dec: false,
+        }
+      );
+    });
+
+    await t.commit();
   } catch (error) {
     await t.rollback();
     throw error;
@@ -139,4 +170,5 @@ async function cancelBooking(bookingId) {
 module.exports = {
   createBooking,
   makePayment,
+  cancelOldBooking,
 };
