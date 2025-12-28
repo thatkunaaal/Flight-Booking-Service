@@ -1,6 +1,8 @@
 const { StatusCodes } = require("http-status-codes");
 const { BookingService } = require("../services");
 const { SuccessResponse, ErrorResponse } = require("../utils/common");
+const { MemoryDB } = require("../utils/common");
+const { inMemory } = MemoryDB;
 
 async function createBooking(req, res) {
   try {
@@ -29,12 +31,32 @@ async function createBooking(req, res) {
 
 async function makePayment(req, res) {
   try {
+    const idompotencyKey = req.headers["x-idompotency-key"];
+
+    if (!idompotencyKey) {
+      ErrorResponse.error = {
+        explanation: "Cannot make a request as Idompotent key is not present",
+      };
+
+      return res.status(StatusCodes.BAD_REQUEST).json(ErrorResponse);
+    }
+
+    if (inMemory[idompotencyKey]) {
+      ErrorResponse.error = {
+        explanation: "Cannot retry on a successful payment",
+      };
+
+      return res.status(StatusCodes.BAD_REQUEST).json(ErrorResponse);
+    }
+
     const payment = await BookingService.makePayment({
       bookingId: req.body.bookingId,
       amount: req.body.amount,
       userId: req.body.userId,
     });
 
+    inMemory[idompotencyKey] = "completed";
+    console.log(inMemory);
     SuccessResponse.data = payment;
 
     return res.status(StatusCodes.OK).json(SuccessResponse);

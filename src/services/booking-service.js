@@ -8,6 +8,7 @@ const bookingRepo = new BookingRepository();
 const { Enum } = require("../utils/common");
 const { BOOKED, CANCELLED } = Enum.STATUS_TYPE;
 
+
 async function createBooking(data) {
   try {
     let response;
