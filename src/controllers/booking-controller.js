@@ -2,6 +2,7 @@ const { StatusCodes } = require("http-status-codes");
 const { BookingService } = require("../services");
 const { SuccessResponse, ErrorResponse } = require("../utils/common");
 const { MemoryDB } = require("../utils/common");
+const AppError = require("../utils/errors/app-error");
 const { inMemory } = MemoryDB;
 
 async function createBooking(req, res) {
@@ -31,6 +32,10 @@ async function createBooking(req, res) {
 
 async function makePayment(req, res) {
   try {
+    const jsonData = req.get("user");
+    console.log(jsonData);
+    const user = JSON.parse(jsonData);
+
     const idompotencyKey = req.headers["x-idompotency-key"];
 
     if (!idompotencyKey) {
@@ -53,6 +58,7 @@ async function makePayment(req, res) {
       bookingId: req.body.bookingId,
       amount: req.body.amount,
       userId: req.body.userId,
+      user: user,
     });
 
     inMemory[idompotencyKey] = "completed";
@@ -63,7 +69,10 @@ async function makePayment(req, res) {
   } catch (error) {
     ErrorResponse.error = error;
 
-    return res.status(error.StatusCodes).json(ErrorResponse);
+    if (error instanceof AppError)
+      return res.status(error.StatusCodes).json(ErrorResponse);
+
+    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json(error);
   }
 }
 

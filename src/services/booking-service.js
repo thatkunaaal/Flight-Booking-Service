@@ -7,7 +7,7 @@ const { BookingRepository } = require("../repositories");
 const bookingRepo = new BookingRepository();
 const { Enum } = require("../utils/common");
 const { BOOKED, CANCELLED } = Enum.STATUS_TYPE;
-
+const { QueueConfig } = require("../config");
 
 async function createBooking(data) {
   try {
@@ -52,14 +52,14 @@ async function createBooking(data) {
         StatusCodes.BAD_REQUEST
       );
     }
-    throw new AppError(error, StatusCodes.INTERNAL_SERVER_ERROR);
+    throw error;
   }
 }
 
 async function makePayment(data) {
   const t = await sequelize.transaction();
   try {
-    const { bookingId, amount, userId } = data;
+    const { bookingId, amount, userId, user } = data;
 
     const booking = await bookingRepo.getBooking(bookingId, t);
 
@@ -106,8 +106,30 @@ async function makePayment(data) {
     }
 
     const response = await bookingRepo.confirmBooking(bookingId, t);
+    const flightObj = await axios.get(
+      `${ServerConfig.FLIGHT_SERVICE_URL}/api/v1/flights/${booking.flightId}`
+    );
+
+    const flightData = flightObj.data.data;
+
+    const jsonData = JSON.stringify({
+      mailtTo: user.email,
+      subject: "Booking Confirmed!",
+      text: `
+      Your tickets has been successfully booked with booking-id: ${booking.id}.
+      Passenger: ${booking.noOfSeats}
+      Flight: ${flightData.flightNumber},
+      From: ${flightData.departureAirportId},
+      To: ${flightData.arrivalAirportId},
+      Date: ${flightData.departureTime},
+      `,
+    });
+
+    console.log(jsonData);
+    QueueConfig.sendMessageToQueue(Buffer.from(jsonData));
 
     await t.commit();
+
     return response;
   } catch (error) {
     await t.rollback();
@@ -119,7 +141,7 @@ async function makePayment(data) {
         StatusCodes.BAD_REQUEST
       );
     }
-    throw new AppError(error, StatusCodes.INTERNAL_SERVER_ERROR);
+    throw error;
   }
 }
 

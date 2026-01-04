@@ -1,7 +1,9 @@
 const { StatusCodes } = require("http-status-codes");
-const { SuccessResponse, ErrorResponse } = require("../utils/common");
+const { ErrorResponse } = require("../utils/common");
 
 function validateCreateBooking(req, res, next) {
+  console.log("Middleware controller: ", req.body);
+
   if (!req.body) {
     ErrorResponse.message =
       "You should pass necessary properties while booking a flight.";
